@@ -35,22 +35,22 @@ DEFAULT_PORT = 8083
 
 
 def main(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
-    # Verify an API key is set.
+    # TODO: Verify an API key is set.
     # Not required if using Vertex AI APIs.
-    if os.getenv('GOOGLE_GENAI_USE_VERTEXAI') != 'TRUE' and not os.getenv(
-        'GOOGLE_API_KEY'
-    ):
-        raise ValueError(
-            'GOOGLE_API_KEY environment variable not set and '
-            'GOOGLE_GENAI_USE_VERTEXAI is not TRUE.'
-        )
+    # if os.getenv('GOOGLE_GENAI_USE_VERTEXAI') != 'TRUE' and not os.getenv(
+    #     'GOOGLE_API_KEY'
+    # ):
+    #     raise ValueError(
+    #         'GOOGLE_API_KEY environment variable not set and '
+    #         'GOOGLE_GENAI_USE_VERTEXAI is not TRUE.'
+    #     )
 
     skill = AgentSkill(
-        id='host_agent_search',
-        name='Search host_agent',
-        description='Helps with weather in city, or states, and airbnb',
-        tags=['host_agent'],
-        examples=['weather in LA, CA, and airbnb in LA, CA'],
+        id='routing_skill',
+        name='Routing skill',
+        description='Route requests to the appropriate agent',
+        tags=['routing'],
+        examples=['1 USD to EUR', 'Weather in New York'],
     )
 
     app_url = os.environ.get('APP_URL', f'http://{host}:{port}')
@@ -65,7 +65,7 @@ def main(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
 
     agent_card = AgentCard(
         name='Host A2A Agent',
-        description='A2A server that helps with weather and airbnb',
+        description='A2A server that routes requests to the appropriate agent',
         url=app_url,
         version='1.0.0',
         default_input_modes=['text'],

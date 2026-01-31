@@ -58,7 +58,8 @@ def on_load(e: me.LoadEvent):  # pylint: disable=unused-argument
 security_policy = me.SecurityPolicy(
     allowed_script_srcs=[
         'https://cdn.jsdelivr.net',
-    ]
+    ],
+    dangerously_disable_trusted_types=True,
 )
 
 
@@ -194,6 +195,11 @@ if __name__ == '__main__':
     # The server will still bind to the original host address.
     connect_host = 'localhost' if host == '0.0.0.0' else host
 
+    print(f'Starting UI server on http://{connect_host}:{port}')
+    print(os.getenv('GOOGLE_API_KEY', 'No Google API Key set'))
+    print(os.getenv('AZURE_API_KEY', 'No Azure API Key set'))
+    print(os.getenv('LITELLM_MODEL', 'No LiteLLM model set'))
+    print(os.getenv('AZURE_API_BASE', 'No Azure API Base set'))
     # Set the client to talk to the server
     host_agent_service.server_url = f'http://{connect_host}:{port}'
 

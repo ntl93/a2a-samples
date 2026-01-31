@@ -28,7 +28,7 @@ from remote_agent_connection import (
     RemoteAgentConnections,
     TaskUpdateCallback,
 )
-
+from google.adk.models.lite_llm import LiteLlm
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -140,14 +140,19 @@ class RoutingAgent:
 
     def create_agent(self) -> Agent:
         """Create an instance of the RoutingAgent."""
-        gemini_model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+        # TODO: Change from gemini to LiteLLM
+        # gemini_model = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+        LITELLM_MODEL = os.getenv(
+            'LITELLM_MODEL', 'azure/gpt-5.2-chat'
+        )
+        print(f'Using LiteLLM model: {LITELLM_MODEL}')
         return Agent(
-            model=gemini_model,
+            model=LiteLlm(model=LITELLM_MODEL),
             name='Routing_agent',
             instruction=self.root_instruction,
             before_model_callback=self.before_model_callback,
             description=(
-                'This Routing agent orchestrates the decomposition of the user asking for weather forecast or airbnb accommodation'
+                'This agent routes the user request to the appropriate remote agent.'
             ),
             tools=[
                 self.send_message,
@@ -158,7 +163,7 @@ class RoutingAgent:
         """Generate the root instruction for the RoutingAgent."""
         current_agent = self.check_active_agent(context)
         return f"""
-        **Role:** You are an expert Routing Delegator. Your primary function is to accurately delegate user inquiries regarding weather or accommodations to the appropriate specialized remote agents.
+        **Role:** You are an expert Routing Delegator. Your primary function is to accurately delegate user inquiries regarding weather or currency to the appropriate specialized remote agents.
 
         **Core Directives:**
 
@@ -283,7 +288,7 @@ class RoutingAgent:
             message_request=message_request
         )
         logger.debug(
-            'send_response',
+            'send_response: %s',
             send_response.model_dump_json(exclude_none=True, indent=2),
         )
 
@@ -306,8 +311,10 @@ def _get_initialized_routing_agent_sync() -> Agent:
     async def _async_main() -> Agent:
         routing_agent_instance = await RoutingAgent.create(
             remote_agent_addresses=[
-                os.getenv('AIR_AGENT_URL', 'http://localhost:10002'),
-                os.getenv('WEA_AGENT_URL', 'http://localhost:10001'),
+                # TODO: only include currency agent for now
+                # os.getenv('AIR_AGENT_URL', 'http://localhost:10002'),
+                # os.getenv('WEA_AGENT_URL', 'http://localhost:10001'),
+                os.getenv('CURRENCY_AGENT_URL', 'http://localhost:10000'),
             ]
         )
         return routing_agent_instance.create_agent()

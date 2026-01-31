@@ -31,7 +31,7 @@ from a2a.types import (
 
 
 @click.command()
-@click.option('--agent', default='http://localhost:8083')
+@click.option('--agent', default='http://localhost:10000')
 @click.option(
     '--bearer-token',
     help='Bearer token for authentication.',

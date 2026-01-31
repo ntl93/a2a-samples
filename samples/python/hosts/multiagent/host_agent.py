@@ -89,9 +89,11 @@ class HostAgent:
         self.agents = '\n'.join(agent_info)
 
     def create_agent(self) -> Agent:
+        # TODO: use liteLLM for now
         LITELLM_MODEL = os.getenv(
-            'LITELLM_MODEL', 'gemini/gemini-2.0-flash-001'
+            'LITELLM_MODEL', 'azure/gpt-5.2-chat'
         )
+        print(f'Using LiteLLM model: {LITELLM_MODEL}')
         return Agent(
             model=LiteLlm(model=LITELLM_MODEL),
             name='host_agent',
