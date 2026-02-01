@@ -4,6 +4,8 @@ from collections.abc import AsyncIterable
 from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.tools import BaseTool
+from langchain_core.tools.structured import StructuredTool
 from langchain_openai import AzureChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
@@ -40,6 +42,11 @@ class SupabaseAgent:
     )
 
     def __init__(self):
+
+        print("Initializing SupabaseAgent...")
+        print(f"Using MCP server URL: {os.getenv('SUPABASE_MCP_SERVER_URL', 'http://localhost:3000')}")
+        print(f"Using SUPABASE_API_KEY: {'set' if os.getenv('SUPABASE_API_KEY') else 'not set'}")
+        print(f"Using AZURE_OPENAI_API_KEY: {'set' if os.getenv('AZURE_OPENAI_API_KEY') else 'not set'}")
         self.model = AzureChatOpenAI(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
@@ -52,6 +59,53 @@ class SupabaseAgent:
         self.tools = []
         self.graph = None
 
+    @staticmethod
+    def _wrap_tool_with_schema_defaults(tool: BaseTool) -> BaseTool:
+        """Wrap an MCP-backed tool to apply JSON-schema defaults.
+
+        Supabase MCP tool schemas sometimes mark fields as required even when a
+        default is provided (e.g. `schemas: ["public"]`). LLMs may omit those
+        fields, causing tool calls to fail server-side.
+
+        This wrapper injects `properties.<arg>.default` when an arg is missing.
+        """
+
+        if not isinstance(tool, StructuredTool):
+            return tool
+
+        schema = getattr(tool, "args_schema", None)
+        if not isinstance(schema, dict):
+            return tool
+
+        properties: dict[str, Any] = schema.get("properties") or {}
+        if not isinstance(properties, dict) or not properties:
+            return tool
+
+        defaults: dict[str, Any] = {}
+        for key, prop in properties.items():
+            if isinstance(prop, dict) and "default" in prop and key is not None:
+                defaults[str(key)] = prop["default"]
+
+        if not defaults:
+            return tool
+
+        original_coroutine = tool.coroutine
+
+        async def call_tool_with_defaults(**arguments: dict[str, Any]):
+            for key, value in defaults.items():
+                if key not in arguments or arguments[key] is None:
+                    arguments[key] = value
+            return await original_coroutine(**arguments)
+
+        return StructuredTool(
+            name=tool.name,
+            description=tool.description,
+            args_schema=tool.args_schema,
+            coroutine=call_tool_with_defaults,
+            response_format=getattr(tool, "response_format", "content"),
+            metadata=getattr(tool, "metadata", None),
+        )
+
     async def initialize(self):
         """Initialize the MCP client and load tools."""
         # Create MultiServerMCPClient for HTTP MCP server connection
@@ -60,12 +114,19 @@ class SupabaseAgent:
                 "supabase": {
                     "url": self.mcp_server_url,
                     "transport": "streamable_http",
+                    "headers": {  
+                        "Authorization": f"Bearer {os.getenv('SUPABASE_API_KEY', '')}"
+                    },  
+                    # Supabase MCP does not support session termination via DELETE.
+                    # Avoid noisy warnings on close.
+                    "terminate_on_close": False,
                 }
             }
         )
         
         # Get tools from MCP server
         self.tools = await self.mcp_client.get_tools()
+        self.tools = [self._wrap_tool_with_schema_defaults(t) for t in self.tools]
         
         # Create the ReAct agent with MCP tools
         self.graph = create_react_agent(
@@ -78,8 +139,9 @@ class SupabaseAgent:
 
     async def cleanup(self):
         """Cleanup MCP client resources."""
-        if self.mcp_client:
-            await self.mcp_client.close()
+        # MultiServerMCPClient creates short-lived sessions per call; it does not
+        # expose a close() method.
+        self.mcp_client = None
 
     async def stream(self, query, context_id) -> AsyncIterable[dict[str, Any]]:
         """Stream agent responses."""
@@ -89,7 +151,7 @@ class SupabaseAgent:
         inputs = {'messages': [('user', query)]}
         config = {'configurable': {'thread_id': context_id}}
 
-        for item in self.graph.stream(inputs, config, stream_mode='values'):
+        async for item in self.graph.astream(inputs, config, stream_mode='values'):
             message = item['messages'][-1]
             if (
                 isinstance(message, AIMessage)

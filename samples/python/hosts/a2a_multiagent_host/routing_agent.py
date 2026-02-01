@@ -315,6 +315,7 @@ def _get_initialized_routing_agent_sync() -> Agent:
                 # os.getenv('AIR_AGENT_URL', 'http://localhost:10002'),
                 # os.getenv('WEA_AGENT_URL', 'http://localhost:10001'),
                 os.getenv('CURRENCY_AGENT_URL', 'http://localhost:10000'),
+                os.getenv('SUPABASE_AGENT_URL', 'http://localhost:10001'),
             ]
         )
         return routing_agent_instance.create_agent()

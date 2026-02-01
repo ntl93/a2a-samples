@@ -30,6 +30,12 @@ This application provides a web-based graphical user interface (GUI) to interact
     uv run uvicorn server:app --host 0.0.0.0 --port 8000
     ```
 
+    LamNT add the `__main.py__` file so we can run now as:
+
+    ```bash
+    uv run .
+    ```
+
 3. **Connect to the GUI**:
 
     Open your web browser and navigate to `http://localhost:8000`.

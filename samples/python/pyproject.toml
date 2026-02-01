@@ -38,6 +38,7 @@ members = [
     "agents/veo_video_gen",
     "agents/ag2",
     "agents/langgraph",
+    "agents/langgraph_supabase",
     "extensions/timestamp",
     "extensions/traceability",
 ]

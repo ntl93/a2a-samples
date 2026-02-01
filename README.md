@@ -87,6 +87,12 @@ Use a2a inspector or a2a gui client at `samples/python/hosts/a2a_gui` to chat wi
 
 - Use a2a inspector or a2a gui client at `samples/python/hosts/a2a_gui` to chat with currency agent
 
+4. Demo 3: 
+
+- Start supabase agent at `samples/python/agents/langgraph_supabase`
+
+- Ask question related to supabase to host agent then see it delagated task to supabase server
+
 
 **Note**
 
